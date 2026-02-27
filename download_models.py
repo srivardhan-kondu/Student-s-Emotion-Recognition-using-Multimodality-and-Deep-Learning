@@ -24,19 +24,19 @@ import urllib.request
 
 MODELS = {
     "facial_emotion_model.h5": {
-        "file_id": "YOUR_FACIAL_MODEL_FILE_ID_HERE",   # ← Replace this
+        "file_id": "165hlZM1P13lBAGz9Xs5pzG6NDotDep2-",
         "dest": "saved_models/facial_emotion_model.h5",
         "size": "~43 MB",
         "description": "Facial Emotion CNN (MiniXception)"
     },
     "speech_emotion_model.h5": {
-        "file_id": "YOUR_SPEECH_MODEL_FILE_ID_HERE",   # ← Replace this
+        "file_id": "15C37uhBjGhmkU_YB-hoUHSmMV_yQiz54",
         "dest": "saved_models/speech_emotion_model.h5",
         "size": "~6 MB",
         "description": "Speech Emotion Attention-BiLSTM"
     },
     "text_bert_model.zip": {
-        "file_id": "YOUR_TEXT_BERT_MODEL_FILE_ID_HERE", # ← Replace this
+        "file_id": "1pbXigsXEK5Gh58KblhWJHSf78l4hRKo0",
         "dest": "saved_models/text_bert_model.zip",
         "size": "~438 MB",
         "description": "Text Emotion BERT (fine-tuned)",
