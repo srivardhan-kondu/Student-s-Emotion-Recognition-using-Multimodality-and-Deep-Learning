@@ -181,7 +181,9 @@ class BERTEmotionClassifier:
         self.tokenizer.save_pretrained(filepath)
 
     def load_model(self, filepath: str):
-        self.model = BertForSequenceClassification.from_pretrained(filepath)
+        self.model = BertForSequenceClassification.from_pretrained(
+            filepath, num_labels=self.num_classes
+        )
         self.tokenizer = BertTokenizer.from_pretrained(filepath)
 
 
@@ -228,9 +230,11 @@ class TextEmotionAnalyzer:
         self.model_type = model_type
         self.model = None
 
-        # Check if trained RoBERTa model exists
-        roberta_path = 'saved_models/text_bert_model'   # reused name for RoBERTa save
-        legacy_path = 'saved_models/text_emotion_model.pt'
+        # Check if trained model exists (use absolute path via PROJECT_ROOT)
+        import pathlib
+        project_root = pathlib.Path(__file__).parent.parent.parent
+        roberta_path = str(project_root / 'saved_models' / 'text_bert_model')
+        legacy_path = str(project_root / 'saved_models' / 'text_emotion_model.pt')
 
         import os, json
         if model_type == 'roberta':

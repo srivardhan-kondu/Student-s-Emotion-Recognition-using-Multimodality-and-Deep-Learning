@@ -45,7 +45,7 @@ class MultimodalEmotionPredictor:
         
         # Initialize text components
         self.text_preprocessor = TextPreprocessor()
-        self.text_analyzer = TextEmotionAnalyzer(model_type='bert')
+        self.text_analyzer = TextEmotionAnalyzer(model_type='roberta')
         
         # Initialize fusion
         self.fusion = MultimodalFusion(
@@ -74,12 +74,12 @@ class MultimodalEmotionPredictor:
             else:
                 logger.warning(f"Speech model not found at {MODEL_SAVE_PATHS['speech']}")
             
-            # Load text model
-            if os.path.exists(MODEL_SAVE_PATHS['text']):
-                self.text_analyzer.model.load_model(str(MODEL_SAVE_PATHS['text']))
-                logger.info("Loaded text emotion model")
+            # Text model is already loaded by TextEmotionAnalyzer.__init__
+            # from saved_models/text_bert_model/ directory
+            if self.text_analyzer.model is not None:
+                logger.info("Text emotion model loaded via TextEmotionAnalyzer")
             else:
-                logger.warning(f"Text model not found at {MODEL_SAVE_PATHS['text']}")
+                logger.warning("Text model could not be loaded")
                 
         except Exception as e:
             logger.error(f"Error loading models: {e}")

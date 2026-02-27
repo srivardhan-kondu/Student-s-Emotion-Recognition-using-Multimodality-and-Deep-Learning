@@ -131,7 +131,7 @@ def display_result(result):
     <div class="emotion-card">
         <h1>Detected Emotion: {result['emotion'].upper()}</h1>
         <h3>Confidence: {result['confidence']:.2%}</h3>
-        <p>Modalities Used: {result['modalities_used']}/3</p>
+        <p>Modalities Used: {result['modalities_used'] if isinstance(result['modalities_used'], int) else len(result['modalities_used'])}/3</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -144,36 +144,37 @@ def display_result(result):
     with col2:
         st.plotly_chart(plot_emotion_radar(result['emotion_scores']), use_container_width=True)
     
-    # Individual modality results
-    st.subheader("📊 Individual Modality Results")
-    
-    mod_cols = st.columns(3)
-    
+    # Individual modality results — only show for multimodal (2+ modalities)
     individual = result.get('individual_results', {})
     
-    with mod_cols[0]:
-        st.markdown("**👁️ Facial Recognition**")
-        if individual.get('facial'):
-            st.success(f"Emotion: {individual['facial']['emotion']}")
-            st.info(f"Confidence: {individual['facial']['confidence']:.2%}")
-        else:
-            st.warning("Not available")
-    
-    with mod_cols[1]:
-        st.markdown("**🎤 Speech Analysis**")
-        if individual.get('speech'):
-            st.success(f"Emotion: {individual['speech']['emotion']}")
-            st.info(f"Confidence: {individual['speech']['confidence']:.2%}")
-        else:
-            st.warning("Not available")
-    
-    with mod_cols[2]:
-        st.markdown("**📝 Text Analysis**")
-        if individual.get('text'):
-            st.success(f"Emotion: {individual['text']['emotion']}")
-            st.info(f"Confidence: {individual['text']['confidence']:.2%}")
-        else:
-            st.warning("Not available")
+    if result['modalities_used'] > 1 if isinstance(result['modalities_used'], int) else len(result['modalities_used']) > 1:
+        st.subheader("📊 Individual Modality Results")
+        
+        mod_cols = st.columns(3)
+        
+        with mod_cols[0]:
+            st.markdown("**👁️ Facial Recognition**")
+            if individual.get('facial'):
+                st.success(f"Emotion: {individual['facial']['emotion']}")
+                st.info(f"Confidence: {individual['facial']['confidence']:.2%}")
+            else:
+                st.warning("Not available")
+        
+        with mod_cols[1]:
+            st.markdown("**🎤 Speech Analysis**")
+            if individual.get('speech'):
+                st.success(f"Emotion: {individual['speech']['emotion']}")
+                st.info(f"Confidence: {individual['speech']['confidence']:.2%}")
+            else:
+                st.warning("Not available")
+        
+        with mod_cols[2]:
+            st.markdown("**📝 Text Analysis**")
+            if individual.get('text'):
+                st.success(f"Emotion: {individual['text']['emotion']}")
+                st.info(f"Confidence: {individual['text']['confidence']:.2%}")
+            else:
+                st.warning("Not available")
 
 
 # Main app
@@ -255,7 +256,10 @@ with tab1:
             
             if image_file:
                 with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
-                    tmp.write(image_file.read())
+                    img = Image.open(image_file)
+                    if img.mode == 'RGBA':
+                        img = img.convert('RGB')
+                    img.save(tmp.name)
                     image_path = tmp.name
             
             if audio_file:
@@ -305,6 +309,8 @@ with tab2:
             if st.button("Analyze Facial Emotion", type="primary"):
                 with st.spinner("Analyzing facial expression..."):
                     with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
+                        if image.mode == 'RGBA':
+                            image = image.convert('RGB')
                         image.save(tmp.name)
                         result = st.session_state.predictor.predict_from_image(tmp.name)
                         os.unlink(tmp.name)
@@ -323,6 +329,8 @@ with tab2:
                 with st.spinner("Analyzing facial expression..."):
                     image = Image.open(camera_image)
                     with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
+                        if image.mode == 'RGBA':
+                            image = image.convert('RGB')
                         image.save(tmp.name)
                         result = st.session_state.predictor.predict_from_image(tmp.name)
                         os.unlink(tmp.name)
