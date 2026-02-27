@@ -1,756 +1,555 @@
 # 🎓 Student's Emotion Recognition using Multimodality and Deep Learning
 
-> An AI-powered system that detects student emotions by analyzing **facial expressions**, **speech signals**, and **text input** simultaneously — then **fuses** all three predictions into a single, reliable emotion output using advanced decision strategies.
+> An AI-powered system that **automatically detects how a student is feeling** by analyzing their **face**, **voice**, and **written words** — all at the same time — and combines the results into one accurate emotion reading.
 
 ---
 
 ## 📋 Table of Contents
 
-- [Overview](#-overview)
-- [How It Works (Simple Explanation)](#-how-it-works-simple-explanation)
-- [System Architecture](#-system-architecture)
-- [Model Details](#-model-details)
-  - [Facial Emotion Recognition (CNN)](#1-facial-emotion-recognition-cnn)
-  - [Speech Emotion Recognition (Attention-BiLSTM)](#2-speech-emotion-recognition-attention-bilstm)
-  - [Text Emotion Recognition (BERT)](#3-text-emotion-recognition-bert)
-- [Multimodal Fusion Engine](#-multimodal-fusion-engine)
-  - [Calibrated Fusion (Default)](#1-calibrated-fusion-default--recommended)
-  - [Weighted Fusion](#2-weighted-fusion)
-  - [Adaptive Fusion](#3-adaptive-fusion)
-  - [Voting Fusion](#4-voting-fusion)
-- [Training Parameters](#-training-parameters)
-- [Model Performance](#-model-performance)
+- [What Does This Project Do?](#-what-does-this-project-do)
+- [Why Is This Useful?](#-why-is-this-useful)
+- [How Does It Work? (Simple Explanation)](#-how-does-it-work-simple-explanation)
+- [The 3 AI Models Explained](#-the-3-ai-models-explained)
+- [How Results Are Combined](#-how-results-are-combined)
 - [Project Structure](#-project-structure)
-- [Getting Started](#-getting-started)
-- [Dashboard Guide](#-dashboard-guide)
-- [Python API](#-python-api)
-- [Datasets](#-datasets)
-- [Technology Stack](#-technology-stack)
-- [Functional Requirements](#-functional-requirements)
-- [Documentation](#-documentation)
+- [How to Install and Run](#-how-to-install-and-run)
+- [How to Use the Dashboard](#-how-to-use-the-dashboard)
+- [Model Performance](#-model-performance)
+- [Technology Used](#-technology-used)
+- [Datasets Used for Training](#-datasets-used-for-training)
 
 ---
 
-## 🎯 Overview
+## 🎯 What Does This Project Do?
 
-This system recognizes **6 emotions** from students:
+This system **reads a student's emotion** using three different methods simultaneously:
 
-| Emotion | Example |
-|---------|---------|
-| 😊 **Happy** | Smiling face, cheerful voice, positive text |
-| 😢 **Sad** | Downturned lips, low monotone voice, negative text |
-| 😠 **Angry** | Furrowed brows, loud/harsh voice, aggressive text |
-| 😐 **Neutral** | Relaxed face, calm voice, factual text |
-| 😨 **Fear** | Wide eyes, trembling voice, anxious text |
-| 😲 **Surprise** | Raised eyebrows, sudden pitch change, unexpected text |
+| Input Method | What It Analyzes | Example |
+|---|---|---|
+| 📷 **Face Photo / Camera** | Facial expressions | Is the student smiling? Frowning? Looking scared? |
+| 🎤 **Voice / Audio Recording** | Tone, pitch, energy of speech | Is the voice loud and angry? Quiet and sad? |
+| 📝 **Text / Typed Message** | Meaning of written words | "I love this class!" vs "I hate this assignment" |
 
-### Why Multimodal?
+It can detect **6 emotions**:
 
-A single modality can be misleading. Someone might **smile** while saying something **sarcastic** (text says negative). By combining all three modalities, the system is much more accurate and robust than any single model alone.
-
----
-
-## 🧠 How It Works (Simple Explanation)
-
-```
-┌─────────────┐     ┌──────────────────────┐     ┌─────────────┐
-│  📷 Image   │────▶│  Facial CNN Model    │────▶│ "happy 85%" │──┐
-└─────────────┘     └──────────────────────┘     └─────────────┘  │
-                                                                   │
-┌─────────────┐     ┌──────────────────────┐     ┌─────────────┐  │   ┌──────────────┐
-│  🎤 Audio   │────▶│  Speech BiLSTM Model │────▶│ "happy 92%" │──┼──▶│  🔀 FUSION   │──▶ Final: HAPPY (89%)
-└─────────────┘     └──────────────────────┘     └─────────────┘  │   │    ENGINE    │
-                                                                   │   └──────────────┘
-┌─────────────┐     ┌──────────────────────┐     ┌─────────────┐  │
-│  📝 Text    │────▶│  BERT Text Model     │────▶│ "happy 98%" │──┘
-└─────────────┘     └──────────────────────┘     └─────────────┘
-```
-
-**Step-by-step:**
-
-1. **Input** — User uploads an image, audio file, and/or enters text
-2. **Individual Models** — Each modality's deep learning model independently predicts an emotion
-3. **Calibration** — Raw model probabilities are *temperature-scaled* so overconfident models don't dominate
-4. **Fusion** — The fusion engine combines all predictions using configurable strategies
-5. **Output** — A single final emotion with confidence score and breakdown per modality
+| Emotion | What It Looks Like |
+|---|---|
+| 😊 **Happy** | Smiling face, cheerful voice, positive words |
+| 😢 **Sad** | Downturned lips, slow quiet voice, negative words |
+| 😠 **Angry** | Furrowed brows, loud harsh voice, aggressive words |
+| 😐 **Neutral** | Relaxed face, calm voice, factual statements |
+| 😨 **Fear** | Wide eyes, trembling voice, anxious words |
+| 😲 **Surprise** | Raised eyebrows, sudden pitch change, unexpected news |
 
 ---
 
-## 🏗️ System Architecture
+## 💡 Why Is This Useful?
 
-```mermaid
-flowchart TB
-    subgraph Input["📥 Input Layer"]
-        IMG["📷 Image\n(JPG/PNG)"]
-        AUD["🎤 Audio\n(WAV/MP3)"]
-        TXT["📝 Text\n(String)"]
-    end
+**The Problem:**
+- Teachers in large classrooms cannot monitor every student's emotions
+- Online learners often feel disconnected and their struggles go unnoticed
+- A student might *say* they are fine but *look* confused or sad
 
-    subgraph PreProcess["🔧 Preprocessing"]
-        FD["Face Detector\n(Haar Cascade)"]
-        AF["Audio Feature\nExtractor (MFCC)"]
-        TP["Text Preprocessor\n(Tokenization + Cleaning)"]
-    end
+**Our Solution:**
+- This AI monitors student emotions automatically in real-time
+- By combining face + voice + text, it is far more accurate than using just one method
+- Educators can use this data to identify struggling students early and offer help
 
-    subgraph Models["🧠 Deep Learning Models"]
-        CNN["Facial CNN\n(MiniXception)\n48×48 grayscale"]
-        LSTM["Speech BiLSTM\n(Attention-based)\nMFCC features"]
-        BERT["Text BERT\n(Fine-tuned)\n128 token max"]
-    end
+**Example of Why Multiple Methods Matter:**
 
-    subgraph Fusion["🔀 Fusion Engine"]
-        CAL["Temperature\nCalibration"]
-        GATE["Confidence\nGating"]
-        FUSE["Weighted\nCombination"]
-    end
-
-    OUT["🎯 Final Emotion\n+ Confidence Score"]
-
-    IMG --> FD --> CNN
-    AUD --> AF --> LSTM
-    TXT --> TP --> BERT
-
-    CNN --> CAL
-    LSTM --> CAL
-    BERT --> CAL
-
-    CAL --> GATE --> FUSE --> OUT
-```
+> Imagine a student is smiling 😊 (face says: happy)  
+> but says "Yeah right, this makes total sense" in a sarcastic tone 😠 (voice says: angry)  
+> and types "I don't understand anything" 😢 (text says: sad)  
+>
+> A system using only the face would say "Happy" — completely wrong!  
+> Our system **combines all three** and correctly identifies the student is **frustrated**.
 
 ---
 
-## 🔬 Model Details
+## 🧠 How Does It Work? (Simple Explanation)
 
-### 1. Facial Emotion Recognition (CNN)
-
-The facial model uses a **MiniXception** architecture — a lightweight CNN designed specifically for real-time emotion detection on small grayscale images.
-
-#### Architecture
+Think of it like three expert judges each watching the same student:
 
 ```
-Input Image (48 × 48 × 1 grayscale)
-        │
-        ▼
-┌─────────────────────────┐
-│ Conv2D(8, 3×3) + BN + ReLU    │  ← Entry flow: basic feature extraction
-│ Conv2D(8, 3×3) + BN + ReLU    │
-└─────────────┬───────────┘
-              │
-    ┌─────────▼──────────┐
-    │  RESIDUAL BLOCK ×4 │  ← 4 blocks with increasing filters
-    │                    │
-    │  Filters: 16 → 32 → 64 → 128
-    │                    │
-    │  Each block:       │
-    │  ├─ SeparableConv2D(f, 3×3) + BN + ReLU
-    │  ├─ SeparableConv2D(f, 3×3) + BN + ReLU
-    │  ├─ MaxPool(3×3, stride=2)
-    │  └─ + Residual Connection (1×1 conv shortcut)
-    └─────────┬──────────┘
-              │
-              ▼
-    Conv2D(6, 3×3)           ← 6 filters = 6 emotion classes
-    GlobalAveragePooling2D
-    Softmax
-              │
-              ▼
-    Output: [happy, sad, angry, neutral, fear, surprise]
+👁️ JUDGE 1 (Face Expert)     → Looks at the face photo       → Says "I think: HAPPY (85%)"
+🎤 JUDGE 2 (Voice Expert)     → Listens to the audio          → Says "I think: HAPPY (92%)"
+📝 JUDGE 3 (Text Expert)      → Reads what student wrote      → Says "I think: HAPPY (98%)"
+                                                                          ↓
+                                                            🧮 COMBINE ALL THREE
+                                                                          ↓
+                                                         ✅ FINAL ANSWER: HAPPY (89%)
 ```
 
-#### Key Design Decisions
+**Step-by-step flow:**
 
-| Decision | Choice | Why |
-|----------|--------|-----|
-| **Input size** | 48×48 grayscale | FER2013 standard; keeps model small and fast |
-| **Separable convolutions** | Depthwise-separable | 8-9× fewer parameters than regular Conv2D |
-| **Residual connections** | Skip connections | Prevents vanishing gradients in deeper blocks |
-| **No fully connected layers** | GAP instead | Reduces overfitting, forces spatial learning |
-| **Face detection** | Haar Cascade (OpenCV) | Fast, works well for frontal faces |
-
-#### Training Configuration
-
-| Parameter | Value |
-|-----------|-------|
-| Optimizer | Adam (lr=0.001) |
-| Loss | Categorical Crossentropy |
-| Batch size | 32 |
-| Epochs | 50 |
-| Input shape | 48 × 48 × 1 |
-| Data split | 15% test, 15% val |
+1. **You provide input** — upload a photo, record audio, or type some text (you can use all three or just one)
+2. **Three AI models independently analyze** each type of input
+3. **Each model gives its prediction** — e.g., "I'm 80% sure this is 'happy'"
+4. **A Fusion Engine combines all predictions** — it's smart enough to trust the more confident model more
+5. **One final answer is given** — the most likely emotion with a confidence percentage
 
 ---
 
-### 2. Speech Emotion Recognition (Attention-BiLSTM)
+## 🔬 The 3 AI Models Explained
 
-The speech model uses an **Attention-based Bidirectional LSTM** — designed to capture both short-range audio patterns (via CNNs) and long-range temporal dependencies (via BiLSTMs), with an attention mechanism that focuses on the most emotionally relevant parts of the audio.
+### 👁️ Model 1 — Facial Emotion Recognition (CNN)
 
-#### Audio Feature Extraction (Preprocessing)
+**What is a CNN?**
+A CNN (Convolutional Neural Network) is a type of AI that was designed to **understand images**, just like how your eyes and brain process visual information.
 
-Before the audio reaches the model, it goes through feature extraction:
+**How it works:**
+1. The system first **detects the face** in the photo using a face detector (like a smartphone's face scanner)
+2. The face is **converted to grayscale** (black & white) and shrunk to a tiny 48×48 pixel image
+3. The CNN **scans the image in small patches** — looking for patterns like:
+   - Curved lips (smile) → likely happy
+   - Furrowed eyebrows → likely angry
+   - Wide eyes → likely surprised or scared
+4. It outputs a **percentage score for each of the 6 emotions**
 
-```
-Raw Audio (.wav) ──▶ librosa ──▶ MFCC Features
-                                  │
-                    ┌─────────────┼─────────────┐
-                    │             │             │
-                  MFCC(40)    Delta(40)    Delta²(40)
-                    │             │             │
-                    └─────────────┼─────────────┘
-                                  │
-                          Feature Vector
-                        (time_steps × 120)
-```
-
-| Feature | Count | What It Captures |
-|---------|-------|-----------------|
-| **MFCC** | 40 coefficients | Spectral envelope (pitch, timbre) |
-| **Delta MFCC** | 40 coefficients | Rate of change (intonation shifts) |
-| **Delta-Delta MFCC** | 40 coefficients | Acceleration (sudden emotion changes) |
-| **Total** | **120 features** per time frame | |
-
-| Audio Parameter | Value |
-|----------------|-------|
-| Sample rate | 22,050 Hz |
-| FFT window | 2,048 samples |
-| Hop length | 512 samples |
-
-#### Model Architecture
-
-```
-MFCC Input (T × 120)     ← T = time steps, 120 = MFCC + deltas
-        │
-        ▼
-┌──────────────────────────────┐
-│  Conv1D(64, k=3) + BN + ReLU     │  ← Short-range feature extraction
-│  Conv1D(64, k=3) + BN + ReLU     │
-│  MaxPool1D(2) + Dropout(0.2)     │
-└──────────────┬───────────────┘
-               │
-               ▼
-┌──────────────────────────────┐
-│  Bidirectional LSTM(128)          │  ← Forward + backward temporal patterns
-│  Dropout(0.3)                     │
-│  Bidirectional LSTM(64)           │  ← Refined temporal encoding
-│  Dropout(0.3)                     │
-└──────────────┬───────────────┘
-               │
-               ▼
-┌──────────────────────────────┐
-│  SELF-ATTENTION LAYER             │  ← Learns which time steps matter most
-│  (attention weights over T axis)  │     for emotion classification
-└──────────────┬───────────────┘
-               │
-               ▼
-┌──────────────────────────────┐
-│  Dense(256) + BN + Dropout(0.4)   │
-│  Dense(128) + Dropout(0.3)        │
-│  Dense(6, softmax)                │
-└──────────────┬───────────────┘
-               │
-               ▼
-    Output: [happy, sad, angry, neutral, fear, surprise]
-```
-
-#### How Self-Attention Works (Simple)
-
-The attention mechanism assigns an **importance score** to each time frame of the audio:
-
-```
-Time:     [0.1s]  [0.2s]  [0.3s]  [0.4s]  [0.5s]  [0.6s]
-Audio:    silence  "I'm"   "so"   "ANGRY"  "at"    "you"
-Attention: 0.05    0.10    0.15    0.40     0.15    0.15
-                                    ↑
-                          Model focuses HERE (loud, emphatic)
-```
-
-Instead of treating all time steps equally, the model **focuses** on the most emotionally expressive parts of the speech.
-
-#### Training Configuration
-
-| Parameter | Value |
-|-----------|-------|
-| Optimizer | Adam (lr=0.001) |
-| Loss | Categorical Crossentropy (label smoothing=0.1) |
-| Batch size | 32 |
-| Epochs | 80 (with EarlyStopping) |
-| Label smoothing | 0.1 (prevents overconfidence) |
+**Analogy:** Imagine teaching a child to recognize emotions by showing them thousands of faces with labels — "this is happy," "this is sad." After enough examples, the child learns the patterns. That's exactly what this CNN did — it was trained on **35,887 face images**.
 
 ---
 
-### 3. Text Emotion Recognition (BERT)
+### 🎤 Model 2 — Speech Emotion Recognition (BiLSTM with Attention)
 
-The text model uses **BERT** (Bidirectional Encoder Representations from Transformers) — a pre-trained transformer model fine-tuned on emotion classification.
+**What is this model?**
+This AI listens to audio and understands emotion from **HOW something is said**, not what words are used.
 
-#### How BERT Works (Simple)
+**Step 1 — Feature Extraction (Converting Sound to Numbers)**
 
-Unlike traditional models that read text left-to-right, BERT reads **both directions simultaneously**:
+The audio file is analyzed to extract numerical features:
+- **MFCC** (Mel-Frequency Cepstral Coefficients) — captures the *tone and pitch* of the voice
+- **Delta MFCC** — captures how quickly the tone *changes* over time
+- **Delta-Delta MFCC** — captures the *acceleration* of those changes (like a sudden shout)
 
-```
-Traditional:  "I" → "love" → "this" → "class"  (only sees past words)
+Think of it like this: instead of reading words, the AI reads the "shape" of the sound wave.
 
-BERT:         "I" ← "love" → "this" ← "class"  (sees ALL words at once)
-                       ↕              ↕
-              Full bidirectional context
-```
+**Step 2 — BiLSTM (Bidirectional Long Short-Term Memory)**
 
-This means when BERT sees the word "love", it already knows it's followed by "this class" — giving much richer understanding.
+This part of the model reads the audio features **both forward and backward in time**:
+- Forward: "After this quiet moment, the voice got louder" → building anger?
+- Backward: "Before the shout, there was a calm pause" → deliberate emphasis?
 
-#### Architecture
+Combined, it understands **the full emotional arc** of the speech.
 
-```
-Input Text: "I really enjoyed today's lecture!"
-        │
-        ▼
-┌──────────────────────────────┐
-│  BERT Tokenizer                   │  ← Converts text to token IDs
-│  [CLS] I really enjoyed ...       │     Adds special tokens
-│  Max length: 128 tokens           │
-└──────────────┬───────────────┘
-               │
-               ▼
-┌──────────────────────────────┐
-│  BERT-base-uncased                │  ← 12 transformer layers
-│  (110M parameters)                │     768 hidden dimensions
-│  Pre-trained on English Wikipedia │     12 attention heads
-│  + BookCorpus                     │
-└──────────────┬───────────────┘
-               │
-               ▼
-┌──────────────────────────────┐
-│  [CLS] Token Embedding            │  ← Represents whole sentence meaning
-│                                    │
-│  Classification Head:              │
-│  Linear(768 → 6) + Softmax        │  ← Maps to 6 emotions
-└──────────────┬───────────────┘
-               │
-               ▼
-    Output: [happy, sad, angry, neutral, fear, surprise]
-```
+**Step 3 — Attention Mechanism (Focusing on What Matters)**
 
-#### BERT Parameters
-
-| Parameter | Value |
-|-----------|-------|
-| Model | `bert-base-uncased` |
-| Hidden size | 768 |
-| Attention heads | 12 |
-| Transformer layers | 12 |
-| Total parameters | ~110M |
-| Max token length | 128 |
-| Optimizer | AdamW (lr=2×10⁻⁵) |
-| Batch size | 16 |
-| Epochs | 5 |
-| Fine-tuned layers | Classifier head + top BERT layers |
-
-#### Temperature Scaling
-
-BERT models tend to be **overconfident** (predicting 99% for one class). Temperature scaling softens the output:
+Not all parts of a speech clip are equally emotional. The attention mechanism focuses on the most expressive moments:
 
 ```
-Before calibration (T=1.0):  [0.95, 0.01, 0.01, 0.01, 0.01, 0.01]  ← Overconfident!
-After calibration  (T=1.2):  [0.78, 0.05, 0.05, 0.04, 0.04, 0.04]  ← More realistic
+Time:     [0.1s]   [0.2s]   [0.3s]   [0.4s]   [0.5s]   [0.6s]
+Audio:    "I..."   "just"   "can't"  "TAKE"    "this"   "anymore"
+Focus:     5%       10%      15%       40%       15%       15%
+                                        ↑
+                    Model pays MOST attention to the loud emotional word
 ```
 
-| Temperature | Effect |
-|-------------|--------|
-| T = 1.0 | No change (raw softmax) |
-| T > 1.0 | Softens predictions (reduces overconfidence) |
-| T < 1.0 | Sharpens predictions (increases confidence) |
-
-**Our calibration temperatures:**
-- Facial: T = 1.5 (most overconfident → soften the most)
-- Speech: T = 1.3
-- Text: T = 1.2
+**Trained on:** 1,440 audio clips from 24 professional actors (RAVDESS dataset)
 
 ---
 
-## 🔀 Multimodal Fusion Engine
+### 📝 Model 3 — Text Emotion Recognition (BERT)
 
-The fusion engine is the **brain** of the system. It takes independent predictions from each modality and combines them into a single, reliable prediction. The system supports **4 fusion strategies**:
+**What is BERT?**
+BERT (Bidirectional Encoder Representations from Transformers) is a powerful AI from Google that was trained on the **entire English Wikipedia and thousands of books**. It deeply understands human language.
 
-### 1. Calibrated Fusion (Default — Recommended)
+**How it works:**
 
-This is the most sophisticated strategy. It performs three steps:
-
-```
-Step 1: CALIBRATE each modality's probabilities
-        (apply temperature scaling to prevent overconfident models from dominating)
-
-Step 2: GATE low-confidence modalities
-        (if a modality's confidence < 30%, skip it entirely)
-
-Step 3: WEIGHT & COMBINE
-        (multiply calibrated probabilities by confidence-scaled weights, then normalize)
-```
-
-**Formula:**
+Traditional language AI reads left to right: "I" → "love" → "this"  
+BERT reads **all directions at once**, understanding context fully:
 
 ```
-effective_weight[m] = base_weight[m] × confidence[m]
+Sentence: "I can't believe how good this is!"
 
-fused_probs = Σ (effective_weight[m] × calibrated_probs[m]) / Σ effective_weight[m]
+Traditional AI: reads word by word, might miss sarcasm
+BERT:           understands "can't believe" + "how good" together = genuine excitement
 ```
 
-**Example:**
-```
-Facial:  happy=80%, confidence=0.80 → effective weight = 0.40 × 0.80 = 0.32
-Speech:  happy=90%, confidence=0.95 → effective weight = 0.30 × 0.95 = 0.285
-Text:    happy=20%, confidence=0.25 → SKIPPED (below 30% threshold)
+**After BERT understands the text**, a classification layer converts that understanding into one of the 6 emotions.
 
-Final = (0.32 × facial_probs + 0.285 × speech_probs) / (0.32 + 0.285)
-```
-
-### 2. Weighted Fusion
-
-Simple linear combination with fixed weights:
-
-```
-fused = 0.40 × facial + 0.30 × speech + 0.30 × text
-```
-
-Pros: Simple, predictable. Cons: Ignores confidence levels.
-
-### 3. Adaptive Fusion
-
-Like weighted fusion, but weights are dynamically adjusted by each modality's confidence:
-
-```
-adaptive_weight[m] = base_weight[m] × confidence[m]
-fused = Σ (adaptive_weight[m] × probs[m]) / Σ adaptive_weight[m]
-```
-
-A modality that is very confident gets amplified; a low-confidence modality gets diminished.
-
-### 4. Voting Fusion
-
-Each modality casts a "vote" for its top predicted emotion. The emotion with the most votes wins:
-
-```
-Facial predicts: HAPPY    → +1 vote for HAPPY
-Speech predicts: HAPPY    → +1 vote for HAPPY
-Text predicts:   NEUTRAL  → +1 vote for NEUTRAL
-
-Result: HAPPY wins (2 vs 1)
-```
-
-Pros: Simple, robust to outliers. Cons: Ignores probability magnitudes.
-
-### Fusion Comparison
-
-| Strategy | Uses Calibration | Uses Confidence | Handles Missing Modalities | Best For |
-|----------|:---:|:---:|:---:|---------|
-| **Calibrated** | ✅ | ✅ | ✅ | Production use (most accurate) |
-| **Weighted** | ❌ | ❌ | ✅ | Simple, fast predictions |
-| **Adaptive** | ❌ | ✅ | ✅ | Variable-quality inputs |
-| **Voting** | ❌ | ❌ | ✅ | Quick consensus |
-
-### Default Modality Weights
-
-| Modality | Weight | Rationale |
-|----------|--------|-----------|
-| Facial | 0.40 | Strongest visual signal for basic emotions |
-| Speech | 0.30 | Captures tone, pitch, and energy |
-| Text | 0.30 | Captures semantic meaning and context |
-
-These weights can be adjusted in real-time via the dashboard sidebar sliders.
+**Trained on:** ~58,000 real Reddit comments (GoEmotions dataset by Google)
 
 ---
 
-## ⚙️ Training Parameters
+## 🔀 How Results Are Combined
 
-### Complete Parameter Reference
+This is called the **Fusion Engine** — the brain that takes predictions from all 3 models and makes a final decision.
 
-| Parameter | Facial | Speech | Text |
-|-----------|--------|--------|------|
-| **Framework** | TensorFlow/Keras | TensorFlow/Keras | PyTorch (HuggingFace) |
-| **Architecture** | MiniXception CNN | Attention-BiLSTM | BERT-base-uncased |
-| **Input format** | 48×48×1 grayscale | MFCC time-series | Tokenized text (128 max) |
-| **Optimizer** | Adam | Adam | AdamW |
-| **Learning rate** | 0.001 | 0.001 | 2×10⁻⁵ |
-| **Batch size** | 32 | 32 | 16 |
-| **Max epochs** | 50 | 80 | 5 |
-| **Early stopping** | ✅ (patience=10) | ✅ (patience=15) | ✅ (best val accuracy) |
-| **Loss function** | Categorical CE | Cat. CE + Label Smoothing(0.1) | Cross Entropy |
-| **Data split** | 70/15/15 | 70/15/15 | 70/15/15 |
-| **Random seed** | 42 | 42 | 42 |
+### The Smart Way (Calibrated Fusion — Default)
 
----
+**Problem with raw AI outputs:** AI models are often overconfident. For example, the face model might say "99% happy" when it's really more like "75% happy." This is called **miscalibration**.
 
-## 📊 Model Performance
+**Step 1 — Temperature Calibration (Fixing Overconfidence)**
 
-### Accuracy Results
+Think of it like adjusting a car's speedometer that always reads 20% too high. We apply a correction factor called a "temperature" to make the predictions more realistic:
 
-| Model | Training Accuracy | Validation Accuracy | Dataset |
-|-------|:-:|:-:|---------|
-| **Facial (CNN)** | ~60% | **57.7%** | FER2013 (35,887 images) |
-| **Speech (BiLSTM)** | ~98% | **97.0%** | RAVDESS (1,440 audio files) |
-| **Text (BERT)** | ~70% | **65.9%** | GoEmotions (58,000 texts) |
+```
+Before correction: Face says "99% happy"   ← Too confident
+After correction:  Face says "78% happy"   ← More realistic
+```
 
-> **Note:** FER2013 is a notoriously difficult dataset — 57.7% is typical for lightweight models. State-of-the-art reaches ~73% with much larger architectures. The speech model achieves 97% because RAVDESS is a controlled, acted dataset with clear emotional expressions.
+| Model | Temperature Applied | Why |
+|---|---|---|
+| Face | 1.5 | Most overconfident — needs the most correction |
+| Speech | 1.3 | Moderately overconfident |
+| Text | 1.2 | Slightly overconfident |
 
-### Training History Visualizations
+**Step 2 — Confidence Gating (Ignoring Unreliable Inputs)**
 
-Training history plots and confusion matrices are available in the [`docs/`](docs/) directory:
-- Facial model: training/validation accuracy curves + confusion matrix
-- Speech model: training/validation accuracy curves + confusion matrix
+If one model is very unsure (less than 30% confident), it gets **completely skipped** in the final calculation. Why take advice from someone who says "I'm only 20% sure"?
+
+**Step 3 — Weighted Combination**
+
+Each model has a base importance (weight). The final answer is a weighted average:
+
+| Modality | Base Weight | Why |
+|---|---|---|
+| 😊 Face | 40% | Facial expressions are the strongest signal for basic emotions |
+| 🎤 Speech | 30% | Voice tone carries a lot of emotional information |
+| 📝 Text | 30% | Words convey meaning but can sometimes be ambiguous |
+
+**Example Calculation:**
+```
+Face:   happy=80%, confidence=0.80 → effective weight = 0.40 × 0.80 = 0.32
+Speech: happy=90%, confidence=0.95 → effective weight = 0.30 × 0.95 = 0.285
+Text:   happy=20%, confidence=0.25 → SKIPPED (below 30% threshold)
+
+Final emotion = weighted average of face + speech only → HAPPY ✅
+```
+
+### Other Available Fusion Strategies
+
+| Strategy | How It Works | Best For |
+|---|---|---|
+| **Calibrated** (Default) | Smart — fixes overconfidence + ignores bad inputs | Most accurate, production use |
+| **Weighted** | Simple average with fixed weights | Quick, predictable results |
+| **Adaptive** | Weights change based on how confident each model is | Variable quality inputs |
+| **Voting** | Each model votes, majority wins | Fast consensus decisions |
 
 ---
 
 ## 📁 Project Structure
 
+Here is every file and folder explained in plain English:
+
 ```
-Student's Emotion Recognition using Multimodality and Deep Learning/
+Student's Emotion Recognition/
 │
-├── src/                                # 🔧 Source code
-│   ├── config.py                       #    Global configuration & hyperparameters
-│   ├── facial_recognition/             #    👁️ Facial emotion module
-│   │   ├── model_architecture.py       #       CNN architectures (MiniXception, EfficientNet)
-│   │   ├── emotion_model.py            #       EmotionCNN wrapper class
-│   │   ├── face_detector.py            #       Face detection (Haar Cascade)
-│   │   ├── data_preprocessing.py       #       Image augmentation & loading
-│   │   └── train.py                    #       Training script
-│   ├── speech_analysis/                #    🎤 Speech emotion module
-│   │   ├── emotion_model.py            #       Attention-BiLSTM model
-│   │   ├── audio_features.py           #       MFCC feature extraction
-│   │   ├── speech_recognition.py       #       Audio loading utilities
-│   │   └── train.py                    #       Training script
-│   ├── text_analysis/                  #    📝 Text emotion module
-│   │   ├── emotion_model.py            #       BERT/RoBERTa classifiers + FocalLoss
-│   │   ├── text_preprocessing.py       #       Text cleaning & tokenization
-│   │   └── train.py                    #       Training script
-│   ├── fusion/                         #    🔀 Multimodal fusion module
-│   │   ├── multimodal_fusion.py        #       4 fusion strategies + temperature calibration
-│   │   └── multimodal_predictor.py     #       High-level prediction API
-│   ├── dashboard/                      #    🖥️ Web interface
-│   │   ├── app.py                      #       Streamlit dashboard (main UI)
-│   │   └── run.py                      #       Dashboard launcher
-│   └── utils/                          #    🛠️ Utility functions
-│       ├── helpers.py                  #       Common helpers
-│       └── voice_recorder.py           #       Audio recording utility
+├── 📄 run_dashboard.py          ← ⭐ THE MAIN FILE — Run this to start the app!
+├── 📄 download_models.py        ← ⭐ Run this FIRST to download the AI models
+├── 📄 requirements.txt          ← List of all Python libraries needed
+├── 📄 README.md                 ← This file you are reading now
 │
-├── saved_models/                       # 💾 Trained model weights (gitignored)
-│   ├── facial_emotion_model.h5         #    ~43 MB
-│   ├── speech_emotion_model.h5         #    ~6 MB
-│   └── text_bert_model/                #    ~438 MB (HuggingFace format)
+├── 📁 src/                      ← All the source code (the brain of the system)
+│   │
+│   ├── 📄 config.py             ← Global settings (model paths, emotion labels, etc.)
+│   │
+│   ├── 📁 facial_recognition/   ← Everything related to analyzing faces
+│   │   ├── model_architecture.py   ← Defines the CNN neural network structure
+│   │   ├── emotion_model.py        ← Loads & runs the facial model
+│   │   ├── face_detector.py        ← Detects faces in photos (like auto-focus)
+│   │   ├── data_preprocessing.py   ← Prepares images for training
+│   │   └── train.py                ← Script to train the facial model
+│   │
+│   ├── 📁 speech_analysis/      ← Everything related to analyzing voice
+│   │   ├── emotion_model.py        ← The BiLSTM model for voice emotion
+│   │   ├── audio_features.py       ← Extracts MFCC features from audio
+│   │   ├── speech_recognition.py   ← Audio file loading utilities
+│   │   └── train.py                ← Script to train the speech model
+│   │
+│   ├── 📁 text_analysis/        ← Everything related to analyzing text
+│   │   ├── emotion_model.py        ← The BERT model for text emotion
+│   │   ├── text_preprocessing.py   ← Cleans and tokenizes text input
+│   │   └── train.py                ← Script to train the text model
+│   │
+│   ├── 📁 fusion/               ← Combines predictions from all 3 models
+│   │   ├── multimodal_fusion.py    ← The 4 fusion strategies + calibration logic
+│   │   └── multimodal_predictor.py ← Easy-to-use API to get predictions
+│   │
+│   ├── 📁 dashboard/            ← The web interface (what you see in the browser)
+│   │   └── app.py               ← Streamlit dashboard — the visual front-end
+│   │
+│   └── 📁 utils/                ← Helper utilities
+│       ├── helpers.py           ← Common helper functions
+│       └── voice_recorder.py    ← Tool for recording audio directly in the app
 │
-├── data/                               # 📦 Datasets (gitignored — download separately)
-├── docs/                               # 📚 Documentation + training plots
-├── tests/                              # 🧪 Unit tests
-├── requirements.txt                    # 📋 Python dependencies
-├── run_dashboard.py                    # ▶️ Dashboard launcher script
-├── QUICKSTART.md                       # 🚀 Quick start guide
-├── DATASET_INSTRUCTIONS.md             # 📥 Dataset download instructions
-└── README.md                           # 📖 This file
+├── 📁 saved_models/             ← Where the trained AI models are stored
+│   ├── facial_emotion_model.h5  ← Facial CNN model (~43 MB)
+│   ├── speech_emotion_model.h5  ← Speech BiLSTM model (~6 MB)
+│   └── text_bert_model/         ← BERT text model folder (~438 MB)
+│
+├── 📁 data/                     ← Training datasets (not included — too large)
+├── 📁 docs/                     ← Technical documentation and training charts
+└── 📁 tests/                    ← Automated tests for code quality
 ```
 
 ---
 
-## 🚀 Getting Started
+## 🚀 How to Install and Run
 
-### Prerequisites
+> ⚠️ **Before starting** — Make sure you have **Python 3.8 or newer** installed on your computer.  
+> Check by opening your terminal/command prompt and typing: `python3 --version`  
+> If you see a version number like `Python 3.10.x`, you are good to go!
 
-- **Python** 3.8 or higher
-- **pip** package manager
-- **~2 GB** disk space (for models + dependencies)
-- *(Optional)* CUDA-capable GPU for faster training
+---
 
-### Step 1: Clone the Repository
+### Step 1 — Download (Clone) the Project
+
+**What does "clone" mean?**  
+Cloning means copying all the project files from the internet (GitHub) to your computer.
+
+Open your **Terminal** (Mac/Linux) or **Command Prompt** (Windows) and type:
 
 ```bash
 git clone https://github.com/srivardhan-kondu/Student-s-Emotion-Recognition-using-Multimodality-and-Deep-Learning.git
+```
+
+Then navigate into the project folder:
+
+```bash
 cd "Student's Emotion Recognition using Multimodality and Deep Learning"
 ```
 
-### Step 2: Create Virtual Environment
+> 💡 **What is Git?** Git is a tool for downloading and managing code. If you don't have it,  
+> download it from [https://git-scm.com/downloads](https://git-scm.com/downloads) and install it first.
 
+---
+
+### Step 2 — Create a Virtual Environment
+
+**What is a virtual environment?**  
+Think of it like a separate clean room for this project's software. It prevents this project's libraries from mixing with other Python projects on your computer.
+
+**On Mac / Linux:**
 ```bash
 python3 -m venv venv
-source venv/bin/activate        # macOS/Linux
-# venv\Scripts\activate         # Windows
+source venv/bin/activate
 ```
 
-### Step 3: Install Dependencies
+**On Windows:**
+```bash
+python -m venv venv
+venv\Scripts\activate
+```
+
+> ✅ **How do you know it worked?**  
+> You will see `(venv)` appear at the start of your terminal line, like:  
+> `(venv) your-computer:project $`
+
+---
+
+### Step 3 — Install Required Libraries
+
+**What are libraries?**  
+Libraries are pre-built tools that our code uses. For example, TensorFlow (for AI), OpenCV (for image processing), etc.
+
+Run this command — it will automatically install everything:
 
 ```bash
 pip install -r requirements.txt
+```
+
+> ⏳ This may take **5–15 minutes** depending on your internet speed.  
+> You will see text scrolling on screen — that's normal, it's downloading and installing.
+
+Then install some language processing data:
+
+```bash
 python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords'); nltk.download('wordnet')"
 ```
 
-### Step 4: Download Pre-trained Models ⚡ (No Training Required!)
+---
 
-> **No need to download datasets or train models from scratch!**
-> Pre-trained weights are hosted on Google Drive — just run:
+### Step 4 — Download the Pre-trained AI Models ⚡
 
+**Why is this step needed?**  
+The AI models are the "brains" of the system. They have already been trained (which took hours of computing time), so you don't have to train them yourself. We just need to download the finished, ready-to-use models.
+
+Run:
 ```bash
 python download_models.py
 ```
 
-This will automatically download all 3 trained models (~490 MB total) into `saved_models/`:
+> ⏳ This will download ~490 MB total from Google Drive. Time depends on your internet speed.  
+> You will see a progress bar for each model file.
 
-| Model | File | Size |
-|-------|------|------|
-| 🧠 Facial CNN (MiniXception) | `facial_emotion_model.h5` | ~43 MB |
-| 🎤 Speech Attention-BiLSTM | `speech_emotion_model.h5` | ~6 MB |
-| 📝 Text BERT (fine-tuned) | `text_bert_model/` | ~438 MB |
+What gets downloaded into your `saved_models/` folder:
 
-### Step 5: Launch Dashboard
+| File | What It Is | Size |
+|---|---|---|
+| `facial_emotion_model.h5` | Trained facial expression AI | ~43 MB |
+| `speech_emotion_model.h5` | Trained voice tone AI | ~6 MB |
+| `text_bert_model/` | Trained text understanding AI | ~438 MB |
+
+> ✅ When it finishes you will see:  
+> `✅ All models downloaded successfully!`  
+> `🚀 You can now run: python run_dashboard.py`
+
+---
+
+### Step 5 — Launch the Dashboard! 🎉
 
 ```bash
 python run_dashboard.py
 ```
 
-Open your browser at **http://localhost:8501** 🎉
+You will see this message in the terminal:
+```
+🚀 Starting Multimodal Emotion Recognition Dashboard...
+📍 Dashboard will be available at: http://localhost:8501
+```
+
+Now open your web browser (Chrome, Firefox, etc.) and go to:
+
+## 👉 [http://localhost:8501](http://localhost:8501)
+
+The dashboard will open and you're ready to use it!
+
+> 🛑 **To stop the server:** Press `Ctrl + C` in the terminal.
 
 ---
 
-> **Want to retrain the models yourself?** (optional)
->
 > <details>
-> <summary>Click to expand training instructions</summary>
+> <summary>🔧 Advanced: Want to retrain the models yourself? (Optional — takes hours)</summary>
 >
-> Download the datasets first:
+> You only need this if you want to train from scratch using your own data.
 >
-> | Dataset | Modality | Size | Link |
-> |---------|----------|------|------|
-> | FER2013 | Facial | ~300 MB | [Kaggle](https://www.kaggle.com/datasets/msambare/fer2013) |
-> | RAVDESS | Speech | ~1.1 GB | [Kaggle](https://www.kaggle.com/datasets/uwrfkaggler/ravdess-emotional-speech-audio) |
-> | GoEmotions | Text | ~50 MB | [Kaggle](https://www.kaggle.com/datasets/debarshichanda/goemotions) |
+> **Download the datasets:**
 >
-> Place them in `data/facial/fer2013/`, `data/speech/ravdess/`, `data/text/goemotions/`.
+> | Dataset | For | Size | Download |
+> |---|---|---|---|
+> | FER2013 | Face model | ~300 MB | [Kaggle](https://www.kaggle.com/datasets/msambare/fer2013) |
+> | RAVDESS | Speech model | ~1.1 GB | [Kaggle](https://www.kaggle.com/datasets/uwrfkaggler/ravdess-emotional-speech-audio) |
+> | GoEmotions | Text model | ~50 MB | [Kaggle](https://www.kaggle.com/datasets/debarshichanda/goemotions) |
 >
-> Then train:
+> Place them in: `data/facial/fer2013/`, `data/speech/ravdess/`, `data/text/goemotions/`
+>
+> Then run:
 > ```bash
-> python src/facial_recognition/train.py   # ~30 min on CPU
-> python src/speech_analysis/train.py      # ~20 min on CPU
-> python src/text_analysis/train.py        # ~40 min on CPU
+> python src/facial_recognition/train.py   # ~30 min on GPU
+> python src/speech_analysis/train.py      # ~20 min on GPU
+> python src/text_analysis/train.py        # ~40 min on GPU
 > ```
 > </details>
 
 ---
 
-## 🖥️ Dashboard Guide
+## 🖥️ How to Use the Dashboard
 
-The Streamlit dashboard provides 4 tabs:
+When you open [http://localhost:8501](http://localhost:8501), you will see a dashboard with **4 tabs**:
 
-| Tab | What It Does |
-|-----|-------------|
-| **🎯 Multimodal** | Upload image + audio + text → fused prediction |
-| **👁️ Image** | Upload/capture image → facial emotion only |
-| **🎤 Audio** | Upload audio → speech emotion only |
-| **📝 Text** | Enter text → text emotion only |
+### Tab 1 — 🎯 Multimodal (Most Powerful)
 
-### Sidebar Controls
+This tab uses **all three methods at once** for the most accurate result.
 
-- **Fusion Strategy** — Switch between Calibrated, Weighted, Adaptive, or Voting
-- **Modality Weights** — Adjust facial/speech/text weights with sliders (for Weighted and Adaptive modes)
-- **Prediction History** — Shows last 5 predictions
+What you can do:
+1. 📷 Upload a photo of the student's face (JPG or PNG)
+2. 🎤 Upload an audio recording of the student speaking (WAV or MP3)
+3. 📝 Type or paste a message the student wrote
+4. Click **"Analyze Emotion"**
+5. See the combined result with individual scores from each model
 
----
+### Tab 2 — 👁️ Image Only
 
-## 🐍 Python API
+Upload **just a photo** to detect emotion from the face alone.  
+Useful when you only have a webcam image.
 
-You can use the system programmatically without the dashboard:
+### Tab 3 — 🎤 Audio Only
 
-```python
-from src.fusion.multimodal_predictor import MultimodalEmotionPredictor
+Upload **just an audio file** to detect emotion from voice alone.  
+Useful for analyzing voice recordings or phone calls.
 
-# Initialize and load models
-predictor = MultimodalEmotionPredictor()
-predictor.load_models()
+### Tab 4 — 📝 Text Only
 
-# Single modality predictions
-facial_result = predictor.predict_from_image("photo.jpg")
-speech_result = predictor.predict_from_audio("speech.wav")
-text_result   = predictor.predict_from_text("I'm so happy today!")
-
-# Multimodal prediction (any combination works)
-result = predictor.predict_multimodal(
-    image_path="photo.jpg",
-    audio_path="speech.wav",
-    text="I'm so happy today!"
-)
-
-print(f"Emotion: {result['emotion']}")
-print(f"Confidence: {result['confidence']:.1%}")
-print(f"Modalities Used: {result['modalities_used']}/3")
-
-# Access individual modality results
-for modality, res in result['individual_results'].items():
-    print(f"  {modality}: {res['emotion']} ({res['confidence']:.1%})")
-```
+Type or paste **any text** to detect emotion from words alone.  
+Useful for analyzing student chat messages or written feedback.
 
 ---
 
-## 📦 Datasets
+### Sidebar Options (Left Panel)
 
-### FER2013 (Facial)
+| Option | What It Does |
+|---|---|
+| **Fusion Strategy** | Choose how the 3 models are combined (Calibrated is recommended) |
+| **Modality Weights** | Adjust how much weight each model gets (Face / Speech / Text sliders) |
+| **Prediction History** | See the last 5 predictions made |
 
-| Property | Value |
-|----------|-------|
-| Total images | 35,887 |
-| Image size | 48 × 48 pixels, grayscale |
-| Classes | 7 (mapped to our 6 emotions) |
-| Source | Facial Expression Recognition challenge |
+---
 
-### RAVDESS (Speech)
+## 📊 Model Performance
 
-| Property | Value |
-|----------|-------|
-| Total files | 1,440 audio clips |
-| Actors | 24 (12 male, 12 female) |
-| Format | WAV, 48 kHz |
-| Emotions | 8 (mapped to our 6 emotions) |
-| Source | Ryerson Audio-Visual Database |
+How accurate is each AI model?
 
-### GoEmotions (Text)
+| Model | Dataset Used | Number of Samples | Accuracy |
+|---|---|---|---|
+| 👁️ Facial CNN | FER2013 | 35,887 images | **57.7%** |
+| 🎤 Speech BiLSTM | RAVDESS | 1,440 audio clips | **97.0%** |
+| 📝 Text BERT | GoEmotions | 58,000 text samples | **65.9%** |
 
-| Property | Value |
-|----------|-------|
+> **Why is facial accuracy lower?**  
+> The FER2013 dataset (used for faces) is notoriously difficult — even humans only agree ~65% of the time on these images. Our model at 57.7% is typical for lightweight models. More complex systems achieve ~73% but require 10x more computing power.
+>
+> **Why is speech accuracy so high?**  
+> The RAVDESS dataset uses professional actors with *very clear* emotional expressions. Real-world audio would be harder.
+
+---
+
+## 🛠️ Technology Used
+
+| Category | Tool | What It's Used For |
+|---|---|---|
+| **AI Framework** | TensorFlow / Keras | Building and running the Face and Speech models |
+| **AI Framework** | PyTorch | Building and running the BERT text model |
+| **Language AI** | HuggingFace Transformers | BERT model library |
+| **Face Detection** | OpenCV (Haar Cascade) | Detecting faces in photos |
+| **Audio Processing** | librosa | Extracting audio features (MFCC) |
+| **Text Processing** | NLTK | Cleaning and preparing text |
+| **Web Dashboard** | Streamlit | Building the interactive browser interface |
+| **Charts** | Plotly / Matplotlib | Showing emotion charts and graphs |
+| **Data Science** | NumPy, Pandas, scikit-learn | Data manipulation and evaluation |
+
+---
+
+## 📦 Datasets Used for Training
+
+### 👁️ FER2013 (For the Face Model)
+
+| Property | Details |
+|---|---|
+| Total images | 35,887 face photos |
+| Image size | 48 × 48 pixels, black & white |
+| Source | Kaggle / Facial Expression Recognition Challenge |
+| Emotions | 7 (we use 6) |
+
+### 🎤 RAVDESS (For the Speech Model)
+
+| Property | Details |
+|---|---|
+| Total clips | 1,440 audio recordings |
+| Speakers | 24 professional actors (12 male, 12 female) |
+| Audio format | WAV, 48,000 samples per second |
+| Source | Ryerson University Audio-Visual Database |
+
+### 📝 GoEmotions (For the Text Model)
+
+| Property | Details |
+|---|---|
 | Total texts | ~58,000 Reddit comments |
-| Classes | 27 fine-grained (mapped to our 6 emotions) |
+| Original labels | 27 emotions (we map to 6) |
 | Language | English |
 | Source | Google Research |
 
 ---
 
-## 🛠️ Technology Stack
+## 📚 Additional Documentation
 
-| Category | Technologies | Purpose |
-|----------|-------------|---------|
-| **Deep Learning** | TensorFlow 2.x, PyTorch, HuggingFace Transformers | Model training & inference |
-| **Computer Vision** | OpenCV, Haar Cascades | Face detection & image processing |
-| **Audio Processing** | librosa | MFCC feature extraction |
-| **NLP** | NLTK, HuggingFace Tokenizers | Text preprocessing & tokenization |
-| **Web Framework** | Streamlit | Interactive dashboard |
-| **Visualization** | Matplotlib, Plotly, Seaborn | Training plots & result charts |
-| **Data Science** | NumPy, Pandas, scikit-learn | Data manipulation & evaluation |
-
----
-
-## ✅ Functional Requirements
-
-| ID | Requirement | Status |
-|----|-------------|:------:|
-| FR1-FR5 | Multi-input support (image, audio, text) | ✅ |
-| FR6-FR8 | Facial emotion recognition with face detection | ✅ |
-| FR9-FR10 | Speech emotion analysis from audio | ✅ |
-| FR11-FR12 | Text emotion analysis using NLP | ✅ |
-| FR13-FR14 | Multimodal fusion with adaptive weighting | ✅ |
-| FR15-FR17 | Web dashboard with visualization | ✅ |
-| FR19-FR20 | Model training and evaluation pipeline | ✅ |
-| FR22-FR23 | Comprehensive documentation | ✅ |
-
----
-
-## 📚 Documentation
-
-| Document | Description |
-|----------|-------------|
-| [QUICKSTART.md](QUICKSTART.md) | Step-by-step setup guide |
-| [DATASET_INSTRUCTIONS.md](DATASET_INSTRUCTIONS.md) | How to download and organize datasets |
-| [Technical Documentation](docs/TECHNICAL_DOCUMENTATION.md) | In-depth technical details |
-| [User Guide](docs/USER_GUIDE.md) | How to use the dashboard |
-| [Deployment Guide](docs/DEPLOYMENT_GUIDE.md) | Production deployment options |
+| Document | What's Inside |
+|---|---|
+| [QUICKSTART.md](QUICKSTART.md) | Even shorter setup guide |
+| [DATASET_INSTRUCTIONS.md](DATASET_INSTRUCTIONS.md) | How to download datasets (for retraining) |
+| [docs/TECHNICAL_DOCUMENTATION.md](docs/TECHNICAL_DOCUMENTATION.md) | Deep technical details for developers |
+| [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | Detailed user guide for the dashboard |
+| [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md) | How to deploy on a server |
 
 ---
 
@@ -765,6 +564,5 @@ This project is developed as part of an academic research initiative at the univ
 - **Libraries:** TensorFlow, PyTorch, HuggingFace, Streamlit, librosa, OpenCV
 - **Research Papers:**
   - *"Real-time Convolutional Neural Networks for Emotion and Gender Classification"* — MiniXception architecture
-  - *"EfficientNetV2: Smaller Models and Faster Training"* (Tan & Le, 2021)
   - *"BERT: Pre-training of Deep Bidirectional Transformers"* (Devlin et al., 2019)
-  - *"Attention Is All You Need"* (Vaswani et al., 2017) — Transformer/attention mechanism
+  - *"Attention Is All You Need"* (Vaswani et al., 2017)
