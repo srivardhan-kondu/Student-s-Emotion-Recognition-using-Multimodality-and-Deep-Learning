@@ -308,20 +308,30 @@ with tab2:
             
             if st.button("Analyze Facial Emotion", type="primary"):
                 with st.spinner("Analyzing facial expression..."):
+
                     with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
-                        if image.mode == 'RGBA':
-                            image = image.convert('RGB')
-                        image.save(tmp.name)
-                        result = st.session_state.predictor.predict_from_image(tmp.name)
-                        os.unlink(tmp.name)
-                    
+                        image_path = tmp.name
+
+                    if image.mode == 'RGBA':
+                        image = image.convert('RGB')
+
+                    image.save(image_path)
+
+                    result = st.session_state.predictor.predict_from_image(image_path)
+
+                    os.unlink(image_path)
+
                     if result:
-                        display_result({'emotion': result['emotion'], 
-                                      'confidence': result['confidence'],
-                                      'emotion_scores': dict(zip(['happy', 'sad', 'angry', 'neutral', 'fear', 'surprise'], 
-                                                                result['probabilities'])),
-                                      'modalities_used': 1,
-                                      'individual_results': {'facial': result}})
+                        display_result({
+                            'emotion': result['emotion'],
+                            'confidence': result['confidence'],
+                            'emotion_scores': dict(zip(
+                                ['happy', 'sad', 'angry', 'neutral', 'fear', 'surprise'],
+                                result['probabilities']
+                            )),
+                            'modalities_used': 1,
+                            'individual_results': {'facial': result}
+                        })
     else:
         camera_image = st.camera_input("Take a picture")
         if camera_image:

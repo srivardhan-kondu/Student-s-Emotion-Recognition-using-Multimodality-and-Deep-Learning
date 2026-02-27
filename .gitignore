@@ -170,3 +170,5 @@ Thumbs.db
 tmp/
 temp/
 *.tmp
+
+saved_models

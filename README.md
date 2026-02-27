@@ -385,6 +385,52 @@ What gets downloaded into your `saved_models/` folder:
 > `✅ All models downloaded successfully!`  
 > `🚀 You can now run: python run_dashboard.py`
 
+## ⚠️ Important: If ZIP Models Do Not Extract Correctly
+
+In some systems, the Google Drive ZIP file for the BERT model may not
+extract properly using the automatic script.
+
+If this happens, follow the steps below carefully.
+
+------------------------------------------------------------------------
+
+### Step 1 --- Download the Model Manually
+
+If `download_models.py` fails to extract the BERT model correctly:
+
+1.  Open the Google Drive link shown in the terminal manually.
+2.  Download the `text_bert_model.zip` file.
+3.  Extract it inside the `saved_models/` folder.
+
+------------------------------------------------------------------------
+
+### Step 2 --- Fix Folder Structure (Very Important)
+
+After extraction, you might see this incorrect folder structure:
+
+saved_models/ └── text_bert_model/ └── text_bert_model/ ├── config.json
+├── pytorch_model.bin ├── tokenizer.json └── other model files
+
+⚠️ This structure is incorrect and will cause the application to fail
+when loading the text model.
+
+You must modify it so it becomes:
+
+saved_models/ └── text_bert_model/ ├── config.json ├── pytorch_model.bin
+├── tokenizer.json └── other model files
+
+------------------------------------------------------------------------
+
+### How to Fix the Structure
+
+1.  Open the inner `text_bert_model` folder.
+2.  Move all files one level up into the outer `text_bert_model` folder.
+3.  Delete the now-empty inner folder.
+
+After correcting the structure, the dashboard will load the text model
+successfully.
+
+
 ---
 
 ### Step 5 — Launch the Dashboard! 🎉
