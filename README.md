@@ -576,45 +576,55 @@ pip install -r requirements.txt
 python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords'); nltk.download('wordnet')"
 ```
 
-### Step 4: Download Datasets
+### Step 4: Download Pre-trained Models ⚡ (No Training Required!)
 
-| Dataset | Modality | Size | Download Link |
-|---------|----------|------|---------------|
-| **FER2013** | Facial | ~300 MB | [Kaggle](https://www.kaggle.com/datasets/msambare/fer2013) |
-| **RAVDESS** | Speech | ~1.1 GB | [Kaggle](https://www.kaggle.com/datasets/uwrfkaggler/ravdess-emotional-speech-audio) |
-| **GoEmotions** | Text | ~50 MB | [Kaggle](https://www.kaggle.com/datasets/debarshichanda/goemotions) |
-
-Place them in the `data/` directory:
-
-```
-data/
-├── facial/fer2013/          # FER2013 images (train/ and test/ subfolders)
-├── speech/ravdess/          # RAVDESS audio files
-└── text/goemotions/         # GoEmotions CSV files
-```
-
-See [DATASET_INSTRUCTIONS.md](DATASET_INSTRUCTIONS.md) for detailed steps.
-
-### Step 5: Train Models
+> **No need to download datasets or train models from scratch!**
+> Pre-trained weights are hosted on Google Drive — just run:
 
 ```bash
-# Train facial model (~30 min on CPU, ~5 min on GPU)
-python src/facial_recognition/train.py
-
-# Train speech model (~20 min on CPU)
-python src/speech_analysis/train.py
-
-# Train text model (~40 min on CPU, ~10 min on GPU)
-python src/text_analysis/train.py
+python download_models.py
 ```
 
-### Step 6: Launch Dashboard
+This will automatically download all 3 trained models (~490 MB total) into `saved_models/`:
+
+| Model | File | Size |
+|-------|------|------|
+| 🧠 Facial CNN (MiniXception) | `facial_emotion_model.h5` | ~43 MB |
+| 🎤 Speech Attention-BiLSTM | `speech_emotion_model.h5` | ~6 MB |
+| 📝 Text BERT (fine-tuned) | `text_bert_model/` | ~438 MB |
+
+### Step 5: Launch Dashboard
 
 ```bash
 python run_dashboard.py
 ```
 
 Open your browser at **http://localhost:8501** 🎉
+
+---
+
+> **Want to retrain the models yourself?** (optional)
+>
+> <details>
+> <summary>Click to expand training instructions</summary>
+>
+> Download the datasets first:
+>
+> | Dataset | Modality | Size | Link |
+> |---------|----------|------|------|
+> | FER2013 | Facial | ~300 MB | [Kaggle](https://www.kaggle.com/datasets/msambare/fer2013) |
+> | RAVDESS | Speech | ~1.1 GB | [Kaggle](https://www.kaggle.com/datasets/uwrfkaggler/ravdess-emotional-speech-audio) |
+> | GoEmotions | Text | ~50 MB | [Kaggle](https://www.kaggle.com/datasets/debarshichanda/goemotions) |
+>
+> Place them in `data/facial/fer2013/`, `data/speech/ravdess/`, `data/text/goemotions/`.
+>
+> Then train:
+> ```bash
+> python src/facial_recognition/train.py   # ~30 min on CPU
+> python src/speech_analysis/train.py      # ~20 min on CPU
+> python src/text_analysis/train.py        # ~40 min on CPU
+> ```
+> </details>
 
 ---
 
