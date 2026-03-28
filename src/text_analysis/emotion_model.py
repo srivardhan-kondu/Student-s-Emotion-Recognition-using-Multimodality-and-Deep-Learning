@@ -18,9 +18,9 @@ from transformers import (
 from typing import Tuple, List
 import logging
 
-logger = logging.getLogger(__name__)
+from config import EMOTIONS
 
-EMOTIONS = ['happy', 'sad', 'angry', 'neutral', 'fear', 'surprise']
+logger = logging.getLogger(__name__)
 
 
 # ─── Focal Loss ────────────────────────────────────────────────────────────── #

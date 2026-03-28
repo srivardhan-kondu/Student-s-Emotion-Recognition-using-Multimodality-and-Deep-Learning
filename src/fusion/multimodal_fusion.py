@@ -12,9 +12,9 @@ import numpy as np
 from typing import Dict, List, Optional, Tuple
 import logging
 
-logger = logging.getLogger(__name__)
+from config import EMOTIONS
 
-EMOTIONS = ['happy', 'sad', 'angry', 'neutral', 'fear', 'surprise']
+logger = logging.getLogger(__name__)
 
 # Per-modality calibration temperatures (tuned empirically)
 DEFAULT_TEMPERATURES = {

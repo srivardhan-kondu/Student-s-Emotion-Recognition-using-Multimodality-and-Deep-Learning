@@ -13,11 +13,13 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Download required NLTK data
-try:
-    nltk.data.find('tokenizers/punkt')
-except LookupError:
-    nltk.download('punkt')
+# Download required NLTK data (NLTK 3.9+ uses punkt_tab for word_tokenize)
+for _tokenizer in ('punkt_tab', 'punkt'):
+    try:
+        nltk.data.find(f'tokenizers/{_tokenizer}')
+        break
+    except LookupError:
+        nltk.download(_tokenizer, quiet=True)
     
 try:
     nltk.data.find('corpora/stopwords')

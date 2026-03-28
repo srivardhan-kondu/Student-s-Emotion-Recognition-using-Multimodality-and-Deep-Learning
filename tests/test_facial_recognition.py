@@ -5,8 +5,8 @@ Unit tests for facial emotion recognition module.
 import unittest
 import numpy as np
 import cv2
-from src.facial_recognition.face_detector import FaceDetector
-from src.facial_recognition.emotion_model import EmotionCNN
+from facial_recognition.face_detector import FaceDetector
+from facial_recognition.emotion_model import EmotionCNN
 
 
 class TestFaceDetector(unittest.TestCase):
@@ -54,8 +54,8 @@ class TestEmotionCNN(unittest.TestCase):
         self.assertEqual(model.output_shape[-1], 6)
     
     def test_predict_shape(self):
-        """Test prediction output shape."""
-        self.model.build_model()
+        """Test prediction output shape (custom CNN matches 48×48 grayscale init)."""
+        self.model.build_model(architecture='custom')
         test_image = np.random.rand(48, 48, 1)
         emotion, confidence, probabilities = self.model.predict(test_image)
         

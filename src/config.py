@@ -12,9 +12,22 @@ DATA_DIR = PROJECT_ROOT / "data"
 MODELS_DIR = PROJECT_ROOT / "models"
 SAVED_MODELS_DIR = PROJECT_ROOT / "saved_models"
 
-# Emotion labels
+# Emotion labels (order must match speech/text/fusion probability vectors)
 EMOTIONS = ["happy", "sad", "angry", "neutral", "fear", "surprise"]
 NUM_EMOTIONS = len(EMOTIONS)
+
+# Facial CNN: order of the 6 softmax outputs on disk (before mapping to EMOTIONS for UI/fusion).
+# - "fer_train_py" — angry, fear, happy, neutral, sad, surprise (this repo's train.py folders).
+# - "fer_kaggle_6" — angry, fear, happy, sad, surprise, neutral (common Kaggle FER-6 layout).
+# - "identity" — softmax already matches EMOTIONS order.
+# Dashboard sidebar can override at runtime (updates config module).
+FACIAL_MODEL_SOFTMAX_ORDER = "fer_train_py"
+
+# Bump when predictor / facial logic changes so Streamlit reloads models (session cache bust).
+PREDICTOR_SESSION_VERSION = 5
+
+# Face crop preprocessing (helps many FER / OpenCV pipelines)
+FACIAL_EQUALIZE_HISTOGRAM = True
 
 # Facial Recognition Settings
 FACIAL_CONFIG = {

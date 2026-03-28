@@ -17,7 +17,11 @@ import plotly.express as px
 from datetime import datetime
 
 from fusion.multimodal_predictor import MultimodalEmotionPredictor
-from config import DASHBOARD_CONFIG
+import config as _cfg
+from config import DASHBOARD_CONFIG, EMOTIONS
+
+# Session reload version (defined in config.py); fallback if file is older
+PREDICTOR_SESSION_VERSION = int(getattr(_cfg, "PREDICTOR_SESSION_VERSION", 5))
 from utils.voice_recorder import VoiceRecorder
 
 # Page configuration
@@ -54,13 +58,6 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
-
-# Initialize session state
-if 'predictor' not in st.session_state:
-    with st.spinner("Loading models..."):
-        st.session_state.predictor = MultimodalEmotionPredictor()
-        st.session_state.predictor.load_models()
-    st.success("✅ Models loaded successfully!")
 
 if 'history' not in st.session_state:
     st.session_state.history = []
@@ -183,7 +180,30 @@ st.markdown('<h1 class="main-header">😊 Student Emotion Recognition System</h1
 # Sidebar
 with st.sidebar:
     st.header("⚙️ Settings")
-    
+
+    import config as _project_config
+
+    facial_order = st.selectbox(
+        "Facial model class order",
+        options=["fer_train_py", "fer_kaggle_6", "identity"],
+        index=0,
+        help=(
+            "Match this to how your facial .h5 was trained. "
+            "Try fer_kaggle_6 if happy faces show as angry. "
+            "Changing this reloads models."
+        ),
+    )
+    _project_config.FACIAL_MODEL_SOFTMAX_ORDER = facial_order
+
+    _predictor_key = (PREDICTOR_SESSION_VERSION, facial_order)
+    if st.session_state.get("_predictor_key") != _predictor_key:
+        with st.spinner("Loading models…"):
+            st.session_state.predictor = MultimodalEmotionPredictor()
+            st.session_state.predictor.load_models()
+        st.session_state._predictor_key = _predictor_key
+
+    st.caption(f"Predictor session v{PREDICTOR_SESSION_VERSION} · `{facial_order}`")
+
     # Fusion settings
     st.subheader("Fusion Configuration")
     fusion_type = st.selectbox(
@@ -308,29 +328,21 @@ with tab2:
             
             if st.button("Analyze Facial Emotion", type="primary"):
                 with st.spinner("Analyzing facial expression..."):
-
                     with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
+                        if image.mode == 'RGBA':
+                            image = image.convert('RGB')
+                        image.save(tmp.name)
                         image_path = tmp.name
-
-                    if image.mode == 'RGBA':
-                        image = image.convert('RGB')
-
-                    image.save(image_path)
-
                     result = st.session_state.predictor.predict_from_image(image_path)
-
                     os.unlink(image_path)
 
                     if result:
                         display_result({
                             'emotion': result['emotion'],
                             'confidence': result['confidence'],
-                            'emotion_scores': dict(zip(
-                                ['happy', 'sad', 'angry', 'neutral', 'fear', 'surprise'],
-                                result['probabilities']
-                            )),
+                            'emotion_scores': dict(zip(EMOTIONS, result['probabilities'])),
                             'modalities_used': 1,
-                            'individual_results': {'facial': result}
+                            'individual_results': {'facial': result},
                         })
     else:
         camera_image = st.camera_input("Take a picture")
@@ -348,8 +360,7 @@ with tab2:
                     if result:
                         display_result({'emotion': result['emotion'], 
                                       'confidence': result['confidence'],
-                                      'emotion_scores': dict(zip(['happy', 'sad', 'angry', 'neutral', 'fear', 'surprise'], 
-                                                                result['probabilities'])),
+                                      'emotion_scores': dict(zip(EMOTIONS, result['probabilities'])),
                                       'modalities_used': 1,
                                       'individual_results': {'facial': result}})
 
@@ -383,10 +394,7 @@ with tab3:
                         display_result({
                             'emotion': result['emotion'],
                             'confidence': result['confidence'],
-                            'emotion_scores': dict(zip(
-                                ['happy', 'sad', 'angry', 'neutral', 'fear', 'surprise'],
-                                result['probabilities']
-                            )),
+                            'emotion_scores': dict(zip(EMOTIONS, result['probabilities'])),
                             'modalities_used': 1,
                             'individual_results': {'speech': result}
                         })
@@ -465,10 +473,7 @@ with tab3:
                             display_result({
                                 'emotion': result['emotion'],
                                 'confidence': result['confidence'],
-                                'emotion_scores': dict(zip(
-                                    ['happy', 'sad', 'angry', 'neutral', 'fear', 'surprise'],
-                                    result['probabilities']
-                                )),
+                                'emotion_scores': dict(zip(EMOTIONS, result['probabilities'])),
                                 'modalities_used': 1,
                                 'individual_results': {'speech': result}
                             })
@@ -497,8 +502,7 @@ with tab4:
                 if result:
                     display_result({'emotion': result['emotion'], 
                                   'confidence': result['confidence'],
-                                  'emotion_scores': dict(zip(['happy', 'sad', 'angry', 'neutral', 'fear', 'surprise'], 
-                                                            result['probabilities'])),
+                                  'emotion_scores': dict(zip(EMOTIONS, result['probabilities'])),
                                   'modalities_used': 1,
                                   'individual_results': {'text': result}})
         else:

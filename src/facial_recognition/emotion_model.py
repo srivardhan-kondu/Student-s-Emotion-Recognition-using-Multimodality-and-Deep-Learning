@@ -12,17 +12,27 @@ from tensorflow import keras
 from tensorflow.keras import layers, models
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import numpy as np
-from typing import Tuple, Dict, Optional
+from typing import Tuple, Dict, Optional, List
 import logging
 import cv2
 
-from facial_recognition.model_architecture import (
-    MiniXception, build_efficientnet_model
-)
+import config as project_config
+from facial_recognition.model_architecture import build_efficientnet_model
 
 logger = logging.getLogger(__name__)
 
-EMOTIONS = ['happy', 'sad', 'angry', 'neutral', 'fear', 'surprise']
+# Class index order from facial_recognition/train.py (FER2013 folder layout)
+FER_OUTPUT_EMOTIONS: List[str] = [
+    'angry', 'fear', 'happy', 'neutral', 'sad', 'surprise'
+]
+# canonical[i] = raw[FER_TRAIN_PY_TO_CANONICAL[i]] — train.py folder order
+FER_TRAIN_PY_TO_CANONICAL = np.array([2, 4, 0, 3, 1, 5], dtype=np.intp)
+# Kaggle 6-class: angry, fear, happy, sad, surprise, neutral
+FER_KAGGLE_6_TO_CANONICAL = np.array([2, 3, 0, 5, 1, 4], dtype=np.intp)
+
+# predict() returns labels/probs aligned with config.EMOTIONS (speech/text/fusion)
+EMOTIONS = project_config.EMOTIONS
+
 EFFICIENTNET_INPUT_SIZE = (96, 96)   # RGB 96x96 for EfficientNet
 MINIXCEPTION_INPUT_SIZE = (48, 48)   # Grayscale 48x48 for MiniXception
 
@@ -42,7 +52,7 @@ class EmotionCNN:
         self.model = None
         self.history = None
         self.architecture = None
-        self.temperature = 1.5   # calibration temperature — tuned after training
+        self.temperature = 1.2   # post-softmax calibration (see _apply_temperature)
 
     # ------------------------------------------------------------------ #
     #  Model builders
@@ -264,10 +274,48 @@ class EmotionCNN:
     # ------------------------------------------------------------------ #
 
     def _softmax_with_temperature(self, logits: np.ndarray, T: float) -> np.ndarray:
-        """Apply temperature scaling to soften/sharpen predictions."""
-        scaled = logits / T
+        """Apply temperature to logits (linear layer output), then softmax."""
+        scaled = np.asarray(logits, dtype=np.float64) / T
         exp_vals = np.exp(scaled - np.max(scaled))
         return exp_vals / exp_vals.sum()
+
+    @staticmethod
+    def _seven_to_six_kaggle_probs(vec: np.ndarray) -> np.ndarray:
+        """
+        FER-2013 7-class order: angry, disgust, fear, happy, sad, surprise, neutral.
+        Drop disgust → 6 probs in Kaggle-6 order: angry, fear, happy, sad, surprise, neutral.
+        """
+        v = np.asarray(vec, dtype=np.float64).reshape(-1)
+        if len(v) != 7:
+            raise ValueError("internal: expected 7-class vector")
+        if v.min() >= -1e-4 and v.max() <= 1.0 + 1e-4 and abs(v.sum() - 1.0) < 0.08:
+            p7 = v
+        else:
+            e = np.exp(v - np.max(v))
+            p7 = e / (e.sum() + 1e-12)
+        six = np.concatenate([p7[0:1], p7[2:7]])
+        six = six / (six.sum() + 1e-12)
+        return six
+
+    def _apply_temperature(self, raw: np.ndarray, T: float) -> np.ndarray:
+        """
+        MiniXception ends with softmax — model.predict returns probabilities, not logits.
+        Temperature must be applied in log-probability space, not exp(prob/T).
+        """
+        raw = np.asarray(raw, dtype=np.float64)
+        if abs(T - 1.0) < 1e-6:
+            return raw / (raw.sum() + 1e-12)
+        looks_like_softmax = (
+            raw.min() >= -1e-5
+            and raw.max() <= 1.0 + 1e-5
+            and abs(raw.sum() - 1.0) < 0.05
+        )
+        if looks_like_softmax:
+            log_p = np.log(np.clip(raw, 1e-12, 1.0))
+            z = log_p / T
+            exp_vals = np.exp(z - np.max(z))
+            return exp_vals / exp_vals.sum()
+        return self._softmax_with_temperature(raw, T)
 
     def predict(self, image: np.ndarray) -> Tuple[str, float, np.ndarray]:
         """
@@ -288,13 +336,33 @@ class EmotionCNN:
         else:
             image = self._prepare_grayscale_input(image)
 
-        # Raw softmax probabilities from model
-        raw_probs = self.model.predict(image, verbose=0)[0]
+        raw_probs = np.asarray(self.model.predict(image, verbose=0)[0], dtype=np.float64).reshape(-1)
 
-        # Apply temperature scaling for calibrated confidence
-        probabilities = self._softmax_with_temperature(raw_probs, self.temperature)
+        # Many public FER weights use 7 outputs (incl. disgust). Using only 6 breaks softmax (~1/7 each).
+        if raw_probs.size == 7:
+            six_kag = self._seven_to_six_kaggle_probs(raw_probs)
+            probabilities_raw = self._apply_temperature(six_kag, self.temperature)
+            probabilities = probabilities_raw[FER_KAGGLE_6_TO_CANONICAL]
+        elif raw_probs.size == 6:
+            probabilities_raw = self._apply_temperature(raw_probs, self.temperature)
+            order = project_config.FACIAL_MODEL_SOFTMAX_ORDER
+            if order == "identity":
+                probabilities = np.asarray(probabilities_raw, dtype=np.float64)
+            elif order == "fer_train_py":
+                probabilities = probabilities_raw[FER_TRAIN_PY_TO_CANONICAL]
+            elif order == "fer_kaggle_6":
+                probabilities = probabilities_raw[FER_KAGGLE_6_TO_CANONICAL]
+            else:
+                raise ValueError(
+                    f"Unknown FACIAL_MODEL_SOFTMAX_ORDER={order!r}; "
+                    'use "fer_train_py", "fer_kaggle_6", or "identity"'
+                )
+        else:
+            raise ValueError(
+                f"Facial model has {raw_probs.size} outputs; expected 6 or 7."
+            )
 
-        emotion_idx = np.argmax(probabilities)
+        emotion_idx = int(np.argmax(probabilities))
         confidence = float(probabilities[emotion_idx])
         emotion_label = EMOTIONS[emotion_idx]
 
@@ -314,11 +382,23 @@ class EmotionCNN:
         return np.expand_dims(image, axis=0)
 
     def _prepare_grayscale_input(self, image: np.ndarray) -> np.ndarray:
-        """Resize to 48x48 grayscale and normalise."""
+        """Resize to 48x48 grayscale and normalise (OpenCV uses BGR)."""
         if len(image.shape) == 3 and image.shape[-1] == 3:
-            image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        elif len(image.shape) == 3 and image.shape[-1] == 4:
+            image = cv2.cvtColor(image, cv2.COLOR_BGRA2GRAY)
+
+        if getattr(project_config, "FACIAL_EQUALIZE_HISTOGRAM", True):
+            if image.dtype != np.uint8:
+                img_u8 = np.clip(image, 0, 255).astype(np.uint8)
+            else:
+                img_u8 = image
+            image = cv2.equalizeHist(img_u8)
+
         if image.shape[:2] != MINIXCEPTION_INPUT_SIZE:
-            image = cv2.resize(image, MINIXCEPTION_INPUT_SIZE)
+            image = cv2.resize(
+                image, MINIXCEPTION_INPUT_SIZE, interpolation=cv2.INTER_AREA
+            )
         image = np.expand_dims(image, axis=-1)
         image = np.expand_dims(image, axis=0)
         image = image.astype('float32') / 255.0
@@ -335,8 +415,33 @@ class EmotionCNN:
         self.model.save(filepath)
         logger.info(f"Model saved to {filepath}")
 
-    def load_model(self, filepath: str, architecture: str = 'efficientnet'):
-        """Load model from file."""
-        self.model = keras.models.load_model(filepath)
-        self.architecture = architecture
-        logger.info(f"Model loaded from {filepath} (architecture: {architecture})")
+    def load_model(self, filepath: str, architecture: Optional[str] = None):
+        """
+        Load model from file.
+
+        If architecture is None, infer from input shape: 48x48x1 → grayscale (MiniXception
+        / custom CNN), else EfficientNet-style RGB preprocessing.
+        """
+        try:
+            self.model = keras.models.load_model(filepath, compile=False)
+        except Exception as e:
+            logger.warning("Retrying facial load_model with safe_mode=False: %s", e)
+            try:
+                self.model = keras.models.load_model(
+                    filepath, compile=False, safe_mode=False
+                )
+            except TypeError:
+                self.model = keras.models.load_model(filepath, compile=False)
+        if architecture is not None:
+            self.architecture = architecture
+        else:
+            inp = self.model.input_shape
+            if inp is not None and len(inp) == 4 and inp[-1] == 1:
+                self.architecture = 'custom'
+            else:
+                self.architecture = 'efficientnet'
+        n_out = self.model.output_shape[-1]
+        logger.info(
+            f"Model loaded from {filepath} (architecture: {self.architecture}, "
+            f"output_classes={n_out})"
+        )

@@ -15,9 +15,9 @@ import numpy as np
 from typing import Tuple, Dict, Optional
 import logging
 
-logger = logging.getLogger(__name__)
+from config import EMOTIONS
 
-EMOTIONS = ['happy', 'sad', 'angry', 'neutral', 'fear', 'surprise']
+logger = logging.getLogger(__name__)
 
 
 def build_attention_layer(input_tensor):
@@ -310,6 +310,15 @@ class SpeechEmotionModel:
         logger.info(f"Model saved to {filepath}")
 
     def load_model(self, filepath: str):
-        """Load saved model."""
-        self.model = keras.models.load_model(filepath)
+        """Load saved model (inference-only; compile=False for compatibility)."""
+        try:
+            self.model = keras.models.load_model(filepath, compile=False)
+        except Exception as e:
+            logger.warning("Retrying load_model with safe_mode=False: %s", e)
+            try:
+                self.model = keras.models.load_model(
+                    filepath, compile=False, safe_mode=False
+                )
+            except TypeError:
+                self.model = keras.models.load_model(filepath, compile=False)
         logger.info(f"Model loaded from {filepath}")

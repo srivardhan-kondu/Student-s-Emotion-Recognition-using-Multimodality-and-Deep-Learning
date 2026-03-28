@@ -14,13 +14,17 @@ import logging
 
 from facial_recognition.face_detector import FaceDetector
 from facial_recognition.emotion_model import EmotionCNN
-from speech_analysis.audio_features import AudioFeatureExtractor
+from speech_analysis.audio_features import (
+    AudioFeatureExtractor,
+    MAX_TIME_STEPS,
+    FEATURE_DIM,
+)
 from speech_analysis.speech_recognition import SpeechRecognizer
 from speech_analysis.emotion_model import SpeechEmotionModel
 from text_analysis.text_preprocessing import TextPreprocessor
 from text_analysis.emotion_model import TextEmotionAnalyzer
 from fusion.multimodal_fusion import MultimodalFusion
-from config import MODEL_SAVE_PATHS, FUSION_CONFIG
+from config import MODEL_SAVE_PATHS, FUSION_CONFIG, EMOTIONS
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +45,10 @@ class MultimodalEmotionPredictor:
         # Initialize speech components
         self.audio_extractor = AudioFeatureExtractor()
         self.speech_recognizer = SpeechRecognizer(method='google')
-        self.speech_model = SpeechEmotionModel(input_shape=(640, 1), num_classes=6)
+        self.speech_model = SpeechEmotionModel(
+            input_shape=(MAX_TIME_STEPS, FEATURE_DIM),
+            num_classes=6,
+        )
         
         # Initialize text components
         self.text_preprocessor = TextPreprocessor()
@@ -126,9 +133,9 @@ class MultimodalEmotionPredictor:
             Speech emotion result dict
         """
         try:
-            features = self.audio_extractor.extract_feature_vector(audio_path)
-            features = features.reshape(1, -1, 1)  # Reshape for model
-            
+            features = self.audio_extractor.extract_sequence_from_file(audio_path)
+            features = np.expand_dims(features, axis=0)
+
             emotion, confidence, probabilities = self.speech_model.predict(features)
             
             return {
@@ -154,9 +161,7 @@ class MultimodalEmotionPredictor:
             preprocessed_text = self.text_preprocessor.preprocess(text)
             result = self.text_analyzer.analyze_emotion(preprocessed_text)
             
-            # Convert to match format
-            emotions = ['happy', 'sad', 'angry', 'neutral', 'fear', 'surprise']
-            probabilities = np.array([result['emotion_scores'][e] for e in emotions])
+            probabilities = np.array([result['emotion_scores'][e] for e in EMOTIONS])
             
             return {
                 'emotion': result['emotion'],
