@@ -86,8 +86,8 @@ def test_predict_from_image_mocked_face(integration_predictor, dummy_image_path)
 
     with mock.patch.object(
         pred.face_detector,
-        "detect_and_extract_faces",
-        return_value=[face.copy()],
+        "detect_faces",
+        return_value=[(0, 0, 48, 48)],
     ):
         result = pred.predict_from_image(dummy_image_path)
 

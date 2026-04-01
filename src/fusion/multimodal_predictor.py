@@ -103,14 +103,15 @@ class MultimodalEmotionPredictor:
         """
         try:
             image = cv2.imread(image_path)
-            faces = self.face_detector.detect_and_extract_faces(image, grayscale=True)
+            faces_bbox = self.face_detector.detect_faces(image)
             
-            if not faces:
+            if not faces_bbox:
                 logger.warning("No faces detected in image")
                 return None
             
-            # Use first detected face
-            face = faces[0]
+            # Extract face region at full resolution for analysis
+            x, y, w, h = faces_bbox[0]
+            face = image[y:y+h, x:x+w]
             emotion, confidence, probabilities = self.facial_model.predict(face)
             
             return {
