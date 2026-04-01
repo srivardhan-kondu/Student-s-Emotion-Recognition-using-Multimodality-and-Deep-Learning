@@ -66,30 +66,31 @@ class MultimodalEmotionPredictor:
     
     def load_models(self):
         """Load all trained models."""
-        try:
-            # Load facial model
-            if os.path.exists(MODEL_SAVE_PATHS['facial']):
+        # Load each modality independently so one failure doesn't block others.
+        if os.path.exists(MODEL_SAVE_PATHS['facial']):
+            try:
                 self.facial_model.load_model(str(MODEL_SAVE_PATHS['facial']))
                 logger.info("Loaded facial emotion model")
-            else:
-                logger.warning(f"Facial model not found at {MODEL_SAVE_PATHS['facial']}")
-            
-            # Load speech model
-            if os.path.exists(MODEL_SAVE_PATHS['speech']):
+            except Exception as e:
+                logger.error("Failed to load facial model: %s", e)
+        else:
+            logger.warning(f"Facial model not found at {MODEL_SAVE_PATHS['facial']}")
+
+        if os.path.exists(MODEL_SAVE_PATHS['speech']):
+            try:
                 self.speech_model.load_model(str(MODEL_SAVE_PATHS['speech']))
                 logger.info("Loaded speech emotion model")
-            else:
-                logger.warning(f"Speech model not found at {MODEL_SAVE_PATHS['speech']}")
-            
-            # Text model is already loaded by TextEmotionAnalyzer.__init__
-            # from saved_models/text_bert_model/ directory
-            if self.text_analyzer.model is not None:
-                logger.info("Text emotion model loaded via TextEmotionAnalyzer")
-            else:
-                logger.warning("Text model could not be loaded")
-                
-        except Exception as e:
-            logger.error(f"Error loading models: {e}")
+            except Exception as e:
+                logger.error("Failed to load speech model: %s", e)
+        else:
+            logger.warning(f"Speech model not found at {MODEL_SAVE_PATHS['speech']}")
+
+        # Text model is already loaded by TextEmotionAnalyzer.__init__
+        # from saved_models/text_bert_model/ directory
+        if self.text_analyzer.model is not None:
+            logger.info("Text emotion model loaded via TextEmotionAnalyzer")
+        else:
+            logger.warning("Text model could not be loaded")
     
     def predict_from_image(self, image_path: str) -> Optional[Dict]:
         """
@@ -134,6 +135,18 @@ class MultimodalEmotionPredictor:
             Speech emotion result dict
         """
         try:
+            if self.speech_model.model is None:
+                speech_path = str(MODEL_SAVE_PATHS['speech'])
+                if not os.path.exists(speech_path):
+                    logger.error("Speech model missing at %s", speech_path)
+                    return None
+                try:
+                    self.speech_model.load_model(speech_path)
+                    logger.info("Loaded speech emotion model on demand")
+                except Exception as e:
+                    logger.error("Failed to load speech model on demand: %s", e)
+                    return None
+
             features = self.audio_extractor.extract_sequence_from_file(audio_path)
             features = np.expand_dims(features, axis=0)
 
